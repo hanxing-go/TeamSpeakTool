@@ -23,13 +23,12 @@ public class TsSingleServer implements Runnable{
     public TsSingleServer(Socket socket, String name) {
         this.socket = socket;
         clientIp = socket.getInetAddress();
-
-        System.out.println(clientIp);
+//        System.out.println(clientIp);
     }
     public void server() {
         try(
                 // 创建输入流，接收端口的输入
-                BufferedInputStream bis = new BufferedInputStream(socket.getInputStream());
+                ObjectInputStream bis = new ObjectInputStream(socket.getInputStream());
 //                // 创建一个输出流，返回客户端相应信息          这里修改了，只需要获取TsServer里面创建输出流就可以。
 //                BufferedOutputStream bos = new BufferedOutputStream(socket.getOutputStream());
                 ) {
@@ -45,13 +44,9 @@ public class TsSingleServer implements Runnable{
                 // 如果是初始记录聊天，就不加
             }
 
-
-            byte[] bytes = new byte[1024];
-            int len = 0;
-            while ((len = bis.read(bytes)) != -1) {
+            Message message;
+            while ((message = (Message) bis.readObject()) != null) {
                 // 将获取的聊天，写入到聊天记录里面
-                String getmessage = new String(bytes, 0, len);
-                Message message = new Message(new Date(), getmessage, "test");
                 messages.add(message);
 
                 // 将当前客户端的每一个输入，发送给所有连接的客户端
@@ -60,12 +55,16 @@ public class TsSingleServer implements Runnable{
 //                    oos.flush();
 //                    // 将当前获取的直接返回回去了
 //                }
+                Message finalMessage = message;
                 TsServer.bosmap.forEach(new BiConsumer<InetAddress, ObjectOutputStream>() {
                     @Override
                     public void accept(InetAddress inetAddress, ObjectOutputStream objectOutputStream) {
                         try {
-                            objectOutputStream.writeObject(message);
-                            objectOutputStream.flush();
+                            if (!(inetAddress.getHostAddress().equals(clientIp.getHostAddress()))) {
+                                objectOutputStream.writeObject(finalMessage);
+                                objectOutputStream.flush();
+                                System.out.println(finalMessage);
+                            }
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
@@ -85,7 +84,7 @@ public class TsSingleServer implements Runnable{
 //            bos.write("服务器接收成功".getBytes());
 //            bos.flush();
 
-        }catch (IOException e) {
+        }catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         } finally {
             try {
