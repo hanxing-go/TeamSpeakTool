@@ -1,7 +1,6 @@
 package util;
 
 import javabean.Message;
-import sun.applet.resources.MsgAppletViewer;
 
 import java.io.FileInputStream;
 import java.io.IOException;
